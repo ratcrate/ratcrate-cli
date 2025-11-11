@@ -1,178 +1,207 @@
-use anyhow::{Result, anyhow};
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::time::Duration;
-use tokio::time::sleep;
-use serde_json::*;
+use anyhow::Result;
+use clap::Parser;
+use colored::*;
 
+mod cache;
+mod types;
 
-#[derive(Debug, Serialize, Deserialize)] struct Crates {
-    id: String,
-    name: String,
-    description: Option<String>,
-    homepage: Option<String>,
-    documentation: Option<String>,
-    repository: Option<String>,
-    downloads: u64,
-    max_stable_version: Option<String>,
-    yanked : bool,
-}
+use cache::{get_data, get_cache_dir, get_cache_file};
+// use types::CratesData;
 
-
-// crates.io API response
-#[derive(Debug, Deserialize)]
-struct CratesResponse {
-    crates: Vec<Crates>,
-    meta: Meta,
-}
-
-
-
-#[derive(Debug, Deserialize)]
-struct Meta {
-    total: u32,
-    next_page: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CrateVersionResponse {
-    version: Vec<Version>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Version {
-    num: String,
-    yanked: bool,
-}
-
-//github api response
-
-struct GithubContent {
-    name: String,
-    download_url: Option<String>,
-    // #[serde(rename = "type")]
-    content_type: String,
-}
-
-//final output structure 
-struct RatatuiCrate {
-    id: String,
-    name: String,
-    description: Option<String>,
-    homepage: Option<String>,
-    documentation: Option<String>,
-    repository: Option<String>,
-    max_stable_version: Option<String>,
-    downloads: u64,
-    latest_version_yanked: Option<bool>,
-    github_repo: Option<String>,
-    cargo_toml_utl: Option<String>,
-    uses_ratatui: bool,
-    ratatui_dependencies_info: Option<String>,
-}
-
-
-#[tokio::main]
-
-async fn main() -> Result<()> {
-
-    println!("Starting crates extraction");
+#[derive(Parser)]
+#[command(name = "ratcrate")]
+#[command(version, about = "Discover crates in the Ratatui ecosystem", long_about = None)]
+struct Cli {
+    /// Search term to filter packages
+    query: Option<String>,
     
-    let client = Client::builder()
-                .timeout(Duration::from_secs(30))
-                .user_agent("ratatui-test/1.0")
-                .build()?;
-
-    // println!("{:?}", client);
-    let url = "https://crates.io/api/v1/crates?per_page=20";
-    println!("Fetching 20 crates from {}", url);
-
-    let response = client.get(url).send().await?;
-
-    // let text = response.text().await?;
-    // println!("text: {}", text);
-
-    //prints status 
-    println!("Status: {}", response.status());
-
-    //json
-    let crates_response = response.json::<CratesResponse>().await?;
-    println!("Found {} crates", crates_response.meta.total);
-    // println!("{:?}", crates_response.crates);
-    println!("{:?}", crates_response.crates.len());
-    // println!("{:?}", crates_response.crates[0]);
-
-    //filter the crates
-
-    let github_crates: Vec<Crates> = crates_response.crates
-                    .into_iter()
-                    .filter(|c|
-                        if let Some(repo) = &c.repository {
-                            repo.contains("github.com")
-                        }        
-                        else {
-                                false
-                            }
-        )
-        .collect();
-
-    // some of the repo will have repository as blank
-    // so need to find a different way or just skip it for now
-    // IDEA, TASK: I can automate to find email address and send a note to the author
+    /// Force refresh data from GitHub
+    #[arg(short, long)]
+    refresh: bool,
     
-    println!("Found {} crates with github repository", github_crates.len());
-
-    //process each crate 
-
-    let mut raratui_crates: Vec<RatatuiCrate> = Vec::new();
+    /// Show only core libraries
+    #[arg(short, long)]
+    core: bool,
     
-    for (i, crate_info) in github_crates.iter().enumerate() {
-        if !crate_info.yanked {
-            println!("\n --- processing crates {}/{}: {} --  {:?}", i+1, 
-                    github_crates.len(), crate_info.name, crate_info.yanked,
-                    );
-            
-        }
+    /// Show cache information
+    #[arg(long)]
+    cache_info: bool,
+    
+    /// Number of results to show (default: 20)
+    #[arg(short, long, default_value = "20")]
+    limit: usize,
+}
+
+fn main() -> Result<()> {
+    let args = Cli::parse();
+    
+    // Print banner
+    print_banner();
+    
+    // Handle cache-info command
+    if args.cache_info {
+        return show_cache_info();
     }
-
-    //match gihub repo
-    let github_repo = match extract_github_repo(&crate_info.repository) {
-       Some(repo) => repo,
-        None => {
-            println!("{} has no github repo", crate_info.name);
-            continue;
-        }
+    
+    // Get data (from cache or download)
+    let data = get_data(args.refresh)?;
+    
+    // Print metadata
+    println!("{}", format!("📦 Total packages: {}", data.metadata.total_crates).cyan());
+    println!("{}", format!("⭐ Core libraries: {}", data.metadata.core_libraries).yellow());
+    println!("{}", format!("🌍 Community: {}", data.metadata.community_packages).green());
+    println!("{}", format!("🕒 Last updated: {}", data.metadata.generated_at).dimmed());
+    println!();
+    
+    // Filter crates
+    let mut crates = data.crates;
+    
+    // Filter by core if requested
+    if args.core {
+        crates.retain(|c| c.is_core_library);
     }
-    println!("Github Repo {}", github_repo);
-
+    
+    // Filter by search query
+    if let Some(query) = &args.query {
+        let query_lower = query.to_lowercase();
+        crates.retain(|c| {
+            c.name.to_lowercase().contains(&query_lower)
+                || c.description.to_lowercase().contains(&query_lower)
+        });
+    }
+    
+    // Show results
+    if crates.is_empty() {
+        println!("{}", "No packages found matching your criteria.".red());
+        return Ok(());
+    }
+    
+    let total = crates.len();
+    let showing = args.limit.min(total);
+    
+    println!("{}", format!("Showing {} of {} packages:", showing, total).bold());
+    println!();
+    
+    for (i, crate_pkg) in crates.iter().take(args.limit).enumerate() {
+        let icon = if crate_pkg.is_core_library {
+            "⭐".yellow()
+        } else {
+            "📦".normal()
+        };
+        
+        let number = format!("{:3}.", i + 1).dimmed();
+        let name = crate_pkg.name.bright_cyan().bold();
+        let version = format!("v{}", crate_pkg.version).dimmed();
+        
+        println!("{} {} {} {}", number, icon, name, version);
+        println!("    {}", crate_pkg.description.dimmed());
+        println!(
+            "    {} {} • {} {}",
+            "↓".green(),
+            format!("{:>8}", format_number(crate_pkg.downloads)).green(),
+            "📈".blue(),
+            format!("{:>6}", format_number(crate_pkg.recent_downloads)).blue()
+        );
+        
+        if let Some(repo) = &crate_pkg.repository {
+            println!("    {} {}", "🔗".dimmed(), repo.dimmed());
+        }
+        
+        println!("    {} {}", "📦".dimmed(), format!("cargo add {}", crate_pkg.name).bright_black());
+        println!();
+    }
+    
+    if total > showing {
+        println!(
+            "{}",
+            format!("... and {} more packages", total - showing).dimmed()
+        );
+    }
+    
     Ok(())
 }
 
+fn print_banner() {
+    println!("{}", "
+╔═══════════════════════════════════════════════════════╗
+║                                                       ║
+║   🐀 RATCRATE                                         ║
+║   Ratatui Ecosystem Explorer                         ║
+║                                                       ║
+╚═══════════════════════════════════════════════════════╝
+    ".bright_cyan());
+}
 
-fn extract_github_repo(repository_url: &Option<String>) -> Result<Option<String>> {
+fn show_cache_info() -> Result<()> {
+    println!("{}", "Cache Information:".bold().cyan());
+    println!();
+    
+    let cache_dir = get_cache_dir()?;
+    let cache_file = get_cache_file()?;
+    
+    println!("  {} {}", "Cache directory:".bold(), cache_dir.display());
+    println!("  {} {}", "Cache file:".bold(), cache_file.display());
+    
+    if cache_file.exists() {
+        let metadata = std::fs::metadata(&cache_file)?;
+        let size = metadata.len();
+        let modified = metadata.modified()?;
+        let age = std::time::SystemTime::now()
+            .duration_since(modified)?
+            .as_secs();
+        
+        println!("  {} {}", "File size:".bold(), format_bytes(size).green());
+        println!(
+            "  {} {}",
+            "Last updated:".bold(),
+            format_duration(age).yellow()
+        );
+        
+        if age > 7 * 24 * 3600 {
+            println!(
+                "\n  {} Cache is older than 7 days, consider refreshing with --refresh",
+                "⚠️".yellow()
+            );
+        }
+    } else {
+        println!("\n  {} Cache file doesn't exist. Run without --cache-info to download.", "ℹ️".blue());
+    }
+    
+    Ok(())
+}
 
-    let url = match repository_url {
-        Some(url) => url,
-        Ok(None) => return Ok(None),
-    };
+fn format_number(n: u64) -> String {
+    if n >= 1_000_000 {
+        format!("{:.1}M", n as f64 / 1_000_000.0)
+    } else if n >= 1_000 {
+        format!("{:.1}K", n as f64 / 1_000.0)
+    } else {
+        n.to_string()
+    }
+}
 
+fn format_bytes(bytes: u64) -> String {
+    if bytes >= 1_000_000 {
+        format!("{:.2} MB", bytes as f64 / 1_000_000.0)
+    } else if bytes >= 1_000 {
+        format!("{:.2} KB", bytes as f64 / 1_000.0)
+    } else {
+        format!("{} bytes", bytes)
+    }
+}
 
-
-
-    // Ok(None)
-} 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+fn format_duration(seconds: u64) -> String {
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let minutes = (seconds % 3600) / 60;
+    
+    if days > 0 {
+        format!("{} day(s) ago", days)
+    } else if hours > 0 {
+        format!("{} hour(s) ago", hours)
+    } else if minutes > 0 {
+        format!("{} minute(s) ago", minutes)
+    } else {
+        "just now".to_string()
+    }
+}

@@ -1,56 +1,50 @@
-// src/model.rs
-//! Defines data structure for crates.io response and final output 
-
-
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
 
-/// Response shape for crates.io top-level list endpoint 
-#[derive(Debug, Serialize)]
-pub struct CratesResponse {
-    pub crates : Vec<Crates>,
-    pub meta : Meta,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RatatuiDependency {
+    pub version: String,
+    pub optional: bool,
+    pub dev_dependency: bool,
 }
 
-/// Minimal crate records to store. Rest to keep in `extra` for extensibility
-/// uses `Value` which is type enum for handling unknown fields
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Crates {
+pub struct CratePackage {
     pub id: String,
     pub name: String,
-    pub max_version: Option<String>,
-    #[serde(default)]
+    pub description: String,
+    pub version: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub downloads: u64,
+    pub recent_downloads: u64,
+    pub categories: Option<Vec<String>>,
     pub repository: Option<String>,
-    #[serde(default)]
-    // `default` helps in handing missing data as `None`
-    pub description: Option<String>,
-    // Helps additional keys to be stored in extra
-    #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
+    pub homepage: Option<String>,
+    pub documentation: Option<String>,
+    pub ratatui_dependency: RatatuiDependency,
+    pub is_core_library: bool,
 }
 
-
-/// Pagnination Meta data from crates.io 
-pub struct Meta {
-    pub total : u64,
-    #[serde(default)]
-    pub next_page : Option<u64>,
-    #[serde(default)]
-    pub previous_page : Option<u64>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Statistics {
+    pub etag_cache_hits: usize,
+    pub etag_cache_misses: usize,
+    pub cache_hit_rate: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Metadata {
+    pub version: String,
+    pub generated_at: String,
+    pub total_crates: usize,
+    pub core_libraries: usize,
+    pub community_packages: usize,
+    pub data_sources: Vec<String>,
+    pub statistics: Statistics,
+}
 
-/// Final JSON for all crates using Ratatui
-/// uses `Value` which is type enum for handling unknown fields
-#[derive(Debug, Serialize)]
-pub struct Ratcrate {
-    pub crate_name: String,
-    pub crate_id: String,
-    pub max_version: Option<String>,
-    pub description: Option<String>,
-    pub repository: Option<String>,
-    pub cargo_toml_url: String,
-    pub uses_ratatui: bool,
-    pub extra: HashMap<String, Value>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CratesData {
+    pub metadata: Metadata,
+    pub crates: Vec<CratePackage>,
 }
