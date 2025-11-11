@@ -13,6 +13,7 @@ use cache::{get_data, get_cache_dir, get_cache_file};
 #[command(version, about = "Discover crates in the Ratatui ecosystem", long_about = None)]
 struct Cli {
     /// Search term to filter packages
+    #[arg(short, long)]
     query: Option<String>,
     
     /// Force refresh data from GitHub
@@ -28,7 +29,7 @@ struct Cli {
     cache_info: bool,
     
     /// Number of results to show (default: 20)
-    #[arg(short, long, default_value = "20")]
+    #[arg(short, long, default_value_t = 20usize)]
     limit: usize,
 }
 
@@ -133,7 +134,8 @@ fn main() -> Result<()> {
 // }
 
 fn print_banner() {
-    println!("\n{}", "=======================================================".bright_cyan());
+    // println!("\n{}", "=======================================================".bright_cyan());
+    println!("\n{}", "=======================================================".dimmed());
     println!("{}", "
     /\\_/\\
    ( o.o )  --- RATCRATE ---
