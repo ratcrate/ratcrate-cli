@@ -1,13 +1,15 @@
 use anyhow::Result;
 use clap::Parser;
 use colored::*;
+use std::process::Command;
 
 mod cache;
 mod types;
 
 use cache::{get_data, get_cache_dir, get_cache_file};
-// use types::CratesData;
+use types::CratePackage;
 
+/// ratcrate - discover crates in the Ratatui ecosystem
 #[derive(Parser)]
 #[command(name = "ratcrate")]
 #[command(version, about = "Discover crates in the Ratatui ecosystem", long_about = None)]
@@ -15,206 +17,338 @@ struct Cli {
     /// Search term to filter packages
     #[arg(short, long)]
     query: Option<String>,
-    
-    /// Force refresh data from GitHub
-    #[arg(short, long)]
-    refresh: bool,
-    
-    /// Show only core libraries
-    #[arg(short, long)]
-    core: bool,
-    
-    /// Show cache information
+
+    /// Show cache info
     #[arg(short='i', long)]
     cache_info: bool,
-    
-    /// Number of results to show (default: 20)
+
+    /// Limit number of results to show
     #[arg(short, long, default_value_t = 20usize)]
     limit: usize,
+
+    /// Force re-download of remote JSON to cache
+    #[arg(short='r', long)]
+    refresh: bool,
+
+    /// Use table view (requires compiling with --features table)
+    #[arg(long)]
+    table: bool,
+
+    /// Use fzf to interactively pick a crate (requires fzf installed)
+    #[arg(short='f', long)]
+    fzf: bool,
 }
 
 fn main() -> Result<()> {
     let args = Cli::parse();
-    
-    // Print banner
+
+    // print banner
     print_banner();
-    
-    // Handle cache-info command
+
     if args.cache_info {
         return show_cache_info();
     }
-    
-    // Get data (from cache or download)
-    let data = get_data(args.refresh)?;
-    
-    // Print metadata
-    println!("{}", format!("📦 Total packages: {}", data.metadata.total_crates).cyan());
-    println!("{}", format!("⭐ Core libraries: {}", data.metadata.core_libraries).yellow());
-    println!("{}", format!("🌍 Community: {}", data.metadata.community_packages).green());
-    println!("{}", format!("🕒 Last updated: {}", data.metadata.generated_at).dimmed());
-    println!();
-    
-    // Filter crates
-    let mut crates = data.crates;
-    
-    // Filter by core if requested
-    if args.core {
-        crates.retain(|c| c.is_core_library);
-    }
-    
-    // Filter by search query
-    if let Some(query) = &args.query {
-        let query_lower = query.to_lowercase();
-        crates.retain(|c| {
-            c.name.to_lowercase().contains(&query_lower)
-                || c.description.to_lowercase().contains(&query_lower)
-        });
-    }
-    
-    // Show results
-    if crates.is_empty() {
-        println!("{}", "No packages found matching your criteria.".red());
-        return Ok(());
-    }
-    
-    let total = crates.len();
-    let showing = args.limit.min(total);
-    
-    println!("{}", format!("Showing {} of {} packages:", showing, total).bold());
-    println!();
-    
-    for (i, crate_pkg) in crates.iter().take(args.limit).enumerate() {
-        let icon = if crate_pkg.is_core_library {
-            "⭐".yellow()
+
+    // fetch data (from cache or remote); pass `args.refresh` to force download if provided
+    let crates_data = get_data(args.refresh)?;
+
+    // If fzf flag is provided, launch interactive selector
+    if args.fzf {
+        if launch_fzf(&crates_data.crates, args.limit, args.query.as_ref())? {
+            // if user selected an item and we displayed it, exit
+            return Ok(());
         } else {
-            "📦".normal()
-        };
-        
-        let number = format!("{:3}.", i + 1).dimmed();
-        let name = crate_pkg.name.bright_cyan().bold();
-        let version = format!("v{}", crate_pkg.version).dimmed();
-        
-        println!("{} {} {} {}", number, icon, name, version);
-        println!("    {}", crate_pkg.description.dimmed());
-        println!(
-            "    {} {} • {} {}",
-            "↓".green(),
-            format!("{:>8}", format_number(crate_pkg.downloads)).green(),
-            "📈".blue(),
-            format!("{:>6}", format_number(crate_pkg.recent_downloads)).blue()
-        );
-        
-        if let Some(repo) = &crate_pkg.repository {
-            println!("    {} {}", "🔗".dimmed(), repo.dimmed());
+            // fall through to normal listing if fzf wasn't used or no selection
         }
-        
-        println!("    {} {}", "📦".dimmed(), format!("cargo add {}", crate_pkg.name).bright_black());
-        println!();
     }
-    
-    if total > showing {
-        println!(
-            "{}",
-            format!("... and {} more packages", total - showing).dimmed()
-        );
+
+    // If table requested and compiled with feature, use table view
+    if args.table {
+        display_table_wrapper(&crates_data.crates, args.query.as_ref(), args.limit);
+    } else {
+        // normal pretty listing
+        display_results(&crates_data.crates, args.query.as_ref(), args.limit);
     }
-    
+
     Ok(())
 }
-
-// fn print_banner() {
-//     println!("{}", "
-// ╔═══════════════════════════════════════════════════════╗
-// ║                                                       ║
-// ║   🐀 RATCRATE                                         ║
-// ║   Ratatui Ecosystem Explorer                          ║
-// ║                                                       ║
-// ╚═══════════════════════════════════════════════════════╝
-//     ".bright_cyan());
-// }
 
 fn print_banner() {
-    // println!("\n{}", "=======================================================".bright_cyan());
-    println!("\n{}", "=======================================================".dimmed());
-    println!("{}", "
-    /\\_/\\
-   ( o.o )  --- RATCRATE ---
-    > ^ <   Ratatui Ecosystem Explorer
-    ".bright_yellow());
-    println!("\n{}", "=======================================================".bright_cyan());
+    println!(
+        "{} {}",
+        "ratcrate".bright_cyan().bold(),
+        "(discover ratatui crates)".dimmed()
+    );
+    println!("{}", "────────────────────────────────────────────────────────".dimmed());
 }
 
-
+/// Show some basic cache info (delegates to your existing helpers)
 fn show_cache_info() -> Result<()> {
-    println!("{}", "Cache Information:".bold().cyan());
-    println!();
-    
     let cache_dir = get_cache_dir()?;
     let cache_file = get_cache_file()?;
-    
-    println!("  {} {}", "Cache directory:".bold(), cache_dir.display());
-    println!("  {} {}", "Cache file:".bold(), cache_file.display());
-    
-    if cache_file.exists() {
-        let metadata = std::fs::metadata(&cache_file)?;
-        let size = metadata.len();
-        let modified = metadata.modified()?;
-        let age = std::time::SystemTime::now()
-            .duration_since(modified)?
-            .as_secs();
-        
-        println!("  {} {}", "File size:".bold(), format_bytes(size).green());
-        println!(
-            "  {} {}",
-            "Last updated:".bold(),
-            format_duration(age).yellow()
-        );
-        
-        if age > 7 * 24 * 3600 {
-            println!(
-                "\n  {} Cache is older than 7 days, consider refreshing with --refresh",
-                "⚠️".yellow()
-            );
-        }
-    } else {
-        println!("\n  {} Cache file doesn't exist. Run without --cache-info to download.", "ℹ️".blue());
-    }
-    
+    println!("Cache dir: {}", cache_dir.display());
+    println!("Cache file: {}", cache_file.display());
     Ok(())
 }
 
-fn format_number(n: u64) -> String {
-    if n >= 1_000_000 {
-        format!("{:.1}M", n as f64 / 1_000_000.0)
-    } else if n >= 1_000 {
-        format!("{:.1}K", n as f64 / 1_000.0)
+/// Main pretty-print function
+fn display_results(crates: &[CratePackage], query: Option<&String>, limit: usize) {
+    // Lowercased query for case-insensitive search
+    let qlower = query.map(|s| s.to_lowercase());
+
+    // Filter first, then collect and take up to `limit`
+    let filtered: Vec<&CratePackage> = crates
+        .iter()
+        .filter(|c| {
+            if let Some(q) = &qlower {
+                c.name.to_lowercase().contains(q)
+                    || c.description.to_lowercase().contains(q)
+            } else {
+                true
+            }
+        })
+        .collect();
+
+    let total = filtered.len();
+    let shown = std::cmp::min(limit, total);
+
+    // Header
+    println!(
+        "{} {} {} {}",
+        "Results:".bright_yellow().bold(),
+        shown.to_string().bright_green().bold(),
+        "/".dimmed(),
+        total.to_string().dimmed()
+    );
+    if let Some(q) = query {
+        println!("{} {}", "Query:".bright_blue(), q.bright_white());
+    }
+    println!("{}", "─".repeat(60).dimmed());
+
+    // Iterate only shown items
+    for (idx, krate) in filtered.into_iter().take(limit).enumerate() {
+        // Line 1: number, name (bold green), version (dim)
+        println!(
+            "{} {} {}",
+            format!("{:>2}.", idx + 1).bright_blue(),
+            krate.name.bright_green().bold(),
+            format!("v{}", krate.version).dimmed()
+        );
+
+        // Line 2: description (wrap if long — simple approach)
+        let desc = if krate.description.trim().is_empty() {
+            "No description".to_string()
+        } else {
+            krate.description.clone()
+        };
+        println!("  {}", wrap_and_dim(&desc, 72));
+
+        // Line 3: small metadata row
+        let downloads = format!("{}", krate.downloads);
+        let repo = krate.repository.as_deref().unwrap_or("No repo");
+        println!(
+            "  {} {}   {} {}",
+            "Downloads:".bright_yellow(),
+            downloads.bright_magenta(),
+            "Repo:".bright_yellow(),
+            repo.bright_blue()
+        );
+
+        // Divider
+        println!("{}", "─".repeat(60).dimmed());
+    }
+
+    println!(
+        "{}",
+        format!("End of list (showing up to {})", shown)
+            .bright_black()
+            .italic()
+    );
+}
+
+/// naive word-wrap and dim the result
+fn wrap_and_dim(s: &str, width: usize) -> String {
+    let mut out = String::new();
+    let mut line_len = 0usize;
+    for word in s.split_whitespace() {
+        let wl = word.len();
+        if line_len + wl + 1 > width && line_len > 0 {
+            out.push('\n');
+            out.push_str("  ");
+            out.push_str(word);
+            line_len = 2 + wl;
+        } else {
+            if line_len > 0 {
+                out.push(' ');
+                line_len += 1;
+            }
+            out.push_str(word);
+            line_len += wl;
+        }
+    }
+    out.dimmed().to_string()
+}
+
+/// Launch fzf with a list of crate lines. Returns Ok(true) if a selection was made and displayed.
+fn launch_fzf(crates: &[CratePackage], limit: usize, query: Option<&String>) -> Result<bool> {
+    // Build lines: "name — description (downloads)"
+    let qlower = query.map(|s| s.to_lowercase());
+    let items: Vec<String> = crates
+        .iter()
+        .filter(|c| {
+            if let Some(q) = &qlower {
+                c.name.to_lowercase().contains(q) || c.description.to_lowercase().contains(q)
+            } else {
+                true
+            }
+        })
+        .take(limit)
+        .map(|c| {
+            // ANSI colored preview in fzf is not recommended; keep plain lines but include enough info
+            format!("{} — {} ({})", c.name, truncate(&c.description, 80), c.downloads)
+        })
+        .collect();
+
+    if items.is_empty() {
+        println!("{}", "No items to show in fzf".yellow());
+        return Ok(false);
+    }
+
+    // Spawn fzf
+    let mut child = match Command::new("fzf").arg("--ansi").arg("--prompt").arg("Select crate> ").stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("{}", format!("Failed to launch fzf: {}. Is fzf installed?", e).red());
+            return Ok(false);
+        }
+    };
+
+    // write items to stdin
+    {
+        use std::io::Write;
+        let stdin = child.stdin.as_mut().expect("Failed to open fzf stdin");
+        for line in &items {
+            writeln!(stdin, "{}", line)?;
+        }
+    }
+
+    // read selection
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        return Ok(false);
+    }
+    let selected = String::from_utf8_lossy(&output.stdout);
+    let selected = selected.trim();
+    if selected.is_empty() {
+        return Ok(false);
+    }
+
+    // Extract name (before ' — ')
+    let name = selected.split('—').next().unwrap_or(selected).trim();
+
+    // Find crate and display full details
+    if let Some(k) = crates.iter().find(|c| c.name == name) {
+        display_single_crate(k);
+        return Ok(true);
     } else {
-        n.to_string()
+        println!("{}", "Selection not found in list".yellow());
+        return Ok(false);
     }
 }
 
-fn format_bytes(bytes: u64) -> String {
-    if bytes >= 1_000_000 {
-        format!("{:.2} MB", bytes as f64 / 1_000_000.0)
-    } else if bytes >= 1_000 {
-        format!("{:.2} KB", bytes as f64 / 1_000.0)
+/// Show an individual crate's details (used by fzf selection)
+fn display_single_crate(k: &CratePackage) {
+    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+    println!("{} {}", k.name.bright_green().bold(), format!("v{}", k.version).dimmed());
+    println!("{}\n", k.description.dimmed());
+    println!("{} {}", "Downloads:".bright_yellow(), k.downloads.to_string().bright_magenta());
+    println!("{} {}", "Repository:".bright_yellow(), k.repository.as_deref().unwrap_or("No repo").bright_blue());
+    println!("{} {}", "Created:".bright_yellow(), k.created_at.bright_black());
+    println!("{} {}", "Updated:".bright_yellow(), k.updated_at.bright_black());
+    println!("{} {}", "ID:".bright_yellow(), k.id.bright_black());
+    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+}
+
+fn truncate(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        s.to_string()
     } else {
-        format!("{} bytes", bytes)
+        let mut t = s[..max].to_string();
+        t.push_str("…");
+        t
     }
 }
 
-fn format_duration(seconds: u64) -> String {
-    let days = seconds / 86400;
-    let hours = (seconds % 86400) / 3600;
-    let minutes = (seconds % 3600) / 60;
-    
-    if days > 0 {
-        format!("{} day(s) ago", days)
-    } else if hours > 0 {
-        format!("{} hour(s) ago", hours)
-    } else if minutes > 0 {
-        format!("{} minute(s) ago", minutes)
-    } else {
-        "just now".to_string()
+//
+// Table view support (optional).
+// This module is only compiled when the crate is built with --features=table
+// Add this to Cargo.toml:
+// [dependencies]
+// tabled = { version = "0.6", optional = true }
+//
+// [features]
+// table = ["tabled"]
+//
+#[cfg(feature = "table")]
+mod table_display {
+    use super::CratePackage;
+    use tabled::{Table, Tabled};
+    use colored::*;
+
+    #[derive(Tabled)]
+    struct Row {
+        name: String,
+        version: String,
+        description: String,
+        downloads: String,
+        repo: String,
     }
+
+    pub fn display_table(crates: &[CratePackage], query: Option<&String>, limit: usize) {
+        let qlower = query.map(|s| s.to_lowercase());
+        let rows: Vec<Row> = crates
+            .iter()
+            .filter(|c| {
+                if let Some(q) = &qlower {
+                    c.name.to_lowercase().contains(q) || c.description.to_lowercase().contains(q)
+                } else {
+                    true
+                }
+            })
+            .take(limit)
+            .map(|c| Row {
+                name: c.name.clone(),
+                version: format!("v{}", c.version),
+                description: truncate(&c.description, 60),
+                downloads: c.downloads.to_string(),
+                repo: c.repository.clone().unwrap_or_else(|| "-".to_string()),
+            })
+            .collect();
+
+        let table = Table::new(rows).to_string();
+        println!("{}", table);
+    }
+
+    fn truncate(s: &str, max: usize) -> String {
+        if s.len() <= max {
+            s.to_string()
+        } else {
+            let mut t = s[..max].to_string();
+            t.push_str("…");
+            t
+        }
+    }
+}
+
+#[cfg(not(feature = "table"))]
+mod table_display {
+    use super::CratePackage;
+    pub fn display_table(_crates: &[CratePackage], _query: Option<&String>, _limit: usize) {
+        eprintln!("Table feature not enabled. Build with --features=table to enable.");
+    }
+}
+
+/// Wrapper to call table module (keeps call-site simple)
+fn display_table_wrapper(crates: &[CratePackage], query: Option<&String>, limit: usize) {
+    table_display::display_table(crates, query, limit);
 }
