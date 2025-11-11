@@ -24,7 +24,7 @@ struct Cli {
     core: bool,
     
     /// Show cache information
-    #[arg(long)]
+    #[arg(short='i', long)]
     cache_info: bool,
     
     /// Number of results to show (default: 20)
@@ -126,7 +126,7 @@ fn print_banner() {
 ╔═══════════════════════════════════════════════════════╗
 ║                                                       ║
 ║   🐀 RATCRATE                                         ║
-║   Ratatui Ecosystem Explorer                         ║
+║   Ratatui Ecosystem Explorer                          ║
 ║                                                       ║
 ╚═══════════════════════════════════════════════════════╝
     ".bright_cyan());
