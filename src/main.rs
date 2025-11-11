@@ -19,7 +19,7 @@ struct Cli {
     query: Option<String>,
 
     /// Show cache info
-    #[arg(short='i', long)]
+    #[arg(short='c', long)]
     cache_info: bool,
 
     /// Limit number of results to show
