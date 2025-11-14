@@ -7,7 +7,7 @@ use colored::*;
 use crate::types::CratesData;
 
 const REMOTE_URL: &str = "https://ratcrate.github.io/data/ratcrate.json";
-const CACHE_MAX_AGE_DAYS: u64 = 7;
+const CACHE_MAX_AGE_DAYS: u64 = 1;
 
 /// Get the cache directory path
 pub fn get_cache_dir() -> Result<PathBuf> {
