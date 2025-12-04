@@ -8,6 +8,7 @@ mod types;
 
 use cache::{get_data, get_cache_dir, get_cache_file};
 use types::CratePackage;
+use types::Metadata;
 
 /// ratcrate - discover crates in the Ratatui ecosystem
 #[derive(Parser)]
@@ -23,7 +24,7 @@ struct Cli {
     cache_info: bool,
 
     /// Limit number of results to show
-    #[arg(short, long, default_value_t = 20usize)]
+    #[arg(short, long, default_value_t = 10usize)]
     limit: usize,
 
     /// Force re-download of remote JSON to cache
@@ -37,6 +38,11 @@ struct Cli {
     /// Use fzf to interactively pick a crate (requires fzf installed)
     #[arg(short='f', long)]
     fzf: bool,
+
+    /// use t for showing the total crates
+    #[arg(short='t', long)]
+    total: bool,
+
 }
 
 fn main() -> Result<()> {
@@ -62,6 +68,13 @@ fn main() -> Result<()> {
         }
     }
 
+    if args.total {
+        // Display the total crates and further information
+        display_total_crates(&crates_data.metadata);
+        return Ok(());
+    }
+
+
     // If table requested and compiled with feature, use table view
     if args.table {
         display_table_wrapper(&crates_data.crates, args.query.as_ref(), args.limit);
@@ -69,6 +82,7 @@ fn main() -> Result<()> {
         // normal pretty listing
         display_results(&crates_data.crates, args.query.as_ref(), args.limit);
     }
+
 
     Ok(())
 }
@@ -255,6 +269,41 @@ fn launch_fzf(crates: &[CratePackage], limit: usize, query: Option<&String>) -> 
         return Ok(false);
     }
 }
+
+/// Show the total crates available in the ratcrate.json
+fn display_total_crates(metadata: &Metadata) {
+    println!(
+        "{}",
+        "Total Crates Overview".bright_cyan().bold()
+    );
+    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+
+    println!(
+        "{} {}",
+        "Total Crates:".bright_yellow(),
+        metadata.total_crates.to_string().bright_green().bold()
+    );
+
+    println!(
+        "  {} {}",
+        "Core Libraries:".bright_blue(),
+        metadata.core_libraries.to_string().bright_magenta()
+    );
+
+    println!(
+        "  {} {}",
+        "Community Packages:".bright_blue(),
+        metadata.community_packages.to_string().bright_magenta()
+    );
+
+    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+    println!(
+        "{}",
+        format!("Data generated at: {}", metadata.generated_at).dimmed()
+    );
+}
+
+
 
 /// Show an individual crate's details (used by fzf selection)
 fn display_single_crate(k: &CratePackage) {
