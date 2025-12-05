@@ -2,12 +2,12 @@
 name = "ratcrate-cli"
 version = "0.1.0"
 edition = "2024"
-authors = ["qubitai.in@gmail.com"]
+authors = ["Rakesh Venkat qubitai.in@gmail.com"]
 description = "Display Ratatui data using CLI"
 license = "MIT"
 repository = "https://github.com/ratcrate/ratcrate-cli"
 homepage = "https://github.com/ratcrate/ratcrate-cli"
-documentation = "https://qubitai.in/book/rat-cli"
+documentation = "https://docs.rs/ratcrate-cli"
 readme = "README.md"
 keywords = ["ratatui", "ratcrate", "cli"]
 categories = ["command-line-utilities"]
