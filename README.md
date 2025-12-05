@@ -1,8 +1,13 @@
 # 🦀 ratcrate-cli: Ratatui Ecosystem Crate Discoverer
 
-[![Rust Build Status](https://github.com/your-username/ratcrate-cli/actions/workflows/rust.yml/badge.svg)](https://github.com/your-username/ratcrate-cli/actions/workflows/rust.yml)
+
+[![Rust Build Status](https://github.com/rvbug/ratcrate-cli/actions/workflows/rust.yml/badge.svg)](https://github.com/rvbug/ratcrate-cli/actions/workflows/rust.yml)
+[![CI](https://github.com/rvbug/ratcrate-cli/workflows/CI/badge.svg)](https://github.com/rvbug/ratcrate-cli/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/ratcrate.svg)](https://crates.io/crates/ratcrate)
+[![Downloads](https://img.shields.io/crates/d/doc2quarto.svg)](https://crates.io/crates/doc2quarto)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 
 **`ratcrate-cli`** is a fast, terminal-native command-line tool built in **Rust** for discovering, searching, and getting information about crates within the Ratatui ecosystem. It uses a smart caching strategy to provide near-instant results directly in your terminal.
 
