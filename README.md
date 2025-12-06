@@ -1,8 +1,5 @@
 # 🦀 ratcrate-cli: Ratatui Ecosystem Crate Discoverer
 
-
-[![Rust Build Status](https://github.com/rvbug/ratcrate-cli/actions/workflows/rust.yml/badge.svg)](https://github.com/rvbug/ratcrate-cli/actions/workflows/rust.yml)
-[![CI](https://github.com/rvbug/ratcrate-cli/workflows/CI/badge.svg)](https://github.com/rvbug/ratcrate-cli/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Crates.io](https://img.shields.io/crates/v/ratcrate-cli.svg)](https://crates.io/crates/ratcrate-cli)
 [![Downloads](https://img.shields.io/crates/d/ratcrate-cli.svg)](https://crates.io/crates/ratcrate-cli)
