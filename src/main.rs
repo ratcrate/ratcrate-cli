@@ -6,7 +6,7 @@ use std::process::Command;
 mod cache;
 mod types;
 
-use cache::{get_data, get_cache_dir, get_cache_file};
+use cache::{get_cache_dir, get_cache_file, get_data};
 use types::CratePackage;
 use types::Metadata;
 
@@ -20,7 +20,7 @@ struct Cli {
     query: Option<String>,
 
     /// Show cache info
-    #[arg(short='c', long)]
+    #[arg(short = 'c', long)]
     cache_info: bool,
 
     /// Limit number of results to show
@@ -28,7 +28,7 @@ struct Cli {
     limit: usize,
 
     /// Force re-download of remote JSON to cache
-    #[arg(short='r', long)]
+    #[arg(short = 'r', long)]
     refresh: bool,
 
     /// Use table view (requires compiling with --features table)
@@ -36,13 +36,12 @@ struct Cli {
     table: bool,
 
     /// Use fzf to interactively pick a crate (requires fzf installed)
-    #[arg(short='f', long)]
+    #[arg(short = 'f', long)]
     fzf: bool,
 
     /// use t for showing the total crates
-    #[arg(short='t', long)]
+    #[arg(short = 't', long)]
     total: bool,
-
 }
 
 fn main() -> Result<()> {
@@ -74,7 +73,6 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-
     // If table requested and compiled with feature, use table view
     if args.table {
         display_table_wrapper(&crates_data.crates, args.query.as_ref(), args.limit);
@@ -82,7 +80,6 @@ fn main() -> Result<()> {
         // normal pretty listing
         display_results(&crates_data.crates, args.query.as_ref(), args.limit);
     }
-
 
     Ok(())
 }
@@ -93,7 +90,10 @@ fn print_banner() {
         "ratcrate".bright_cyan().bold(),
         "(discover ratatui crates)".dimmed()
     );
-    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+    println!(
+        "{}",
+        "────────────────────────────────────────────────────────".dimmed()
+    );
 }
 
 /// Show some basic cache info (delegates to your existing helpers)
@@ -115,8 +115,7 @@ fn display_results(crates: &[CratePackage], query: Option<&String>, limit: usize
         .iter()
         .filter(|c| {
             if let Some(q) = &qlower {
-                c.name.to_lowercase().contains(q)
-                    || c.description.to_lowercase().contains(q)
+                c.name.to_lowercase().contains(q) || c.description.to_lowercase().contains(q)
             } else {
                 true
             }
@@ -219,7 +218,12 @@ fn launch_fzf(crates: &[CratePackage], limit: usize, query: Option<&String>) -> 
         .take(limit)
         .map(|c| {
             // ANSI colored preview in fzf is not recommended; keep plain lines but include enough info
-            format!("{} — {} ({})", c.name, truncate(&c.description, 80), c.downloads)
+            format!(
+                "{} — {} ({})",
+                c.name,
+                truncate(&c.description, 80),
+                c.downloads
+            )
         })
         .collect();
 
@@ -229,10 +233,20 @@ fn launch_fzf(crates: &[CratePackage], limit: usize, query: Option<&String>) -> 
     }
 
     // Spawn fzf
-    let mut child = match Command::new("fzf").arg("--ansi").arg("--prompt").arg("Select crate> ").stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).spawn() {
+    let mut child = match Command::new("fzf")
+        .arg("--ansi")
+        .arg("--prompt")
+        .arg("Select crate> ")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+    {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{}", format!("Failed to launch fzf: {}. Is fzf installed?", e).red());
+            eprintln!(
+                "{}",
+                format!("Failed to launch fzf: {}. Is fzf installed?", e).red()
+            );
             return Ok(false);
         }
     };
@@ -272,11 +286,11 @@ fn launch_fzf(crates: &[CratePackage], limit: usize, query: Option<&String>) -> 
 
 /// Show the total crates available in the ratcrate.json
 fn display_total_crates(metadata: &Metadata) {
+    println!("{}", "Total Crates Overview".bright_cyan().bold());
     println!(
         "{}",
-        "Total Crates Overview".bright_cyan().bold()
+        "────────────────────────────────────────────────────────".dimmed()
     );
-    println!("{}", "────────────────────────────────────────────────────────".dimmed());
 
     println!(
         "{} {}",
@@ -296,26 +310,53 @@ fn display_total_crates(metadata: &Metadata) {
         metadata.community_packages.to_string().bright_magenta()
     );
 
-    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+    println!(
+        "{}",
+        "────────────────────────────────────────────────────────".dimmed()
+    );
     println!(
         "{}",
         format!("Data generated at: {}", metadata.generated_at).dimmed()
     );
 }
 
-
-
 /// Show an individual crate's details (used by fzf selection)
 fn display_single_crate(k: &CratePackage) {
-    println!("{}", "────────────────────────────────────────────────────────".dimmed());
-    println!("{} {}", k.name.bright_green().bold(), format!("v{}", k.version).dimmed());
+    println!(
+        "{}",
+        "────────────────────────────────────────────────────────".dimmed()
+    );
+    println!(
+        "{} {}",
+        k.name.bright_green().bold(),
+        format!("v{}", k.version).dimmed()
+    );
     println!("{}\n", k.description.dimmed());
-    println!("{} {}", "Downloads:".bright_yellow(), k.downloads.to_string().bright_magenta());
-    println!("{} {}", "Repository:".bright_yellow(), k.repository.as_deref().unwrap_or("No repo").bright_blue());
-    println!("{} {}", "Created:".bright_yellow(), k.created_at.bright_black());
-    println!("{} {}", "Updated:".bright_yellow(), k.updated_at.bright_black());
+    println!(
+        "{} {}",
+        "Downloads:".bright_yellow(),
+        k.downloads.to_string().bright_magenta()
+    );
+    println!(
+        "{} {}",
+        "Repository:".bright_yellow(),
+        k.repository.as_deref().unwrap_or("No repo").bright_blue()
+    );
+    println!(
+        "{} {}",
+        "Created:".bright_yellow(),
+        k.created_at.bright_black()
+    );
+    println!(
+        "{} {}",
+        "Updated:".bright_yellow(),
+        k.updated_at.bright_black()
+    );
     println!("{} {}", "ID:".bright_yellow(), k.id.bright_black());
-    println!("{}", "────────────────────────────────────────────────────────".dimmed());
+    println!(
+        "{}",
+        "────────────────────────────────────────────────────────".dimmed()
+    );
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -341,8 +382,8 @@ fn truncate(s: &str, max: usize) -> String {
 #[cfg(feature = "table")]
 mod table_display {
     use super::CratePackage;
-    use tabled::{Table, Tabled};
     use colored::*;
+    use tabled::{Table, Tabled};
 
     #[derive(Tabled)]
     struct Row {
