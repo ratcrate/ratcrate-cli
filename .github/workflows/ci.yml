@@ -22,10 +22,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Install libssl1.1
-        run:|
-            sudo apt-get update
-            sudo apt-get install -y libssl1.1
+
     
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -62,8 +59,7 @@ jobs:
     - name: Run cargo-tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
-        version: '0.15.0'
-        args: '-- --test-threads 1'
+        args: '--out Xml -- --test-threads 1'
     
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v3
