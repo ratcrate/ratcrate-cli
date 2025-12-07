@@ -36,6 +36,7 @@ jobs:
             target: aarch64-unknown-linux-gnu
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-linux-aarch64
+            use_cross: true
     
     runs-on: ${{ matrix.os }}
     
@@ -47,21 +48,34 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+
+      # Install cross for ARM cross-compilation
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
       
       # Special setup for cross-compilation to ARM on Linux
-      - name: Install cross-compilation tools
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo dpkg --add-architecture aarch64
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev:aarch64
+      # - name: Install cross-compilation tools
+      #   if: matrix.target == 'aarch64-unknown-linux-gnu'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo dpkg --add-architecture aarch64
+      #     sudo apt-get update
+      #     sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev:aarch64
       
+      # - name: Build release binary
+      #   run: cargo build --release --target ${{ matrix.target }}
+      #   env:
+      #     # For ARM Linux cross-compilation
+      #     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }}
-        env:
-          # For ARM Linux cross-compilation
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+     run: |
+       if [ "${{ matrix.use_cross }}" = "true" ]; then
+         cross build --release --target ${{ matrix.target }}
+       else
+         cargo build --release --target ${{ matrix.target }}
+       fi
       
       - name: Strip binary (reduce size)
         if: matrix.os != 'windows-latest'
