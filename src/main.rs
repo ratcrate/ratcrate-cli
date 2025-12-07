@@ -277,10 +277,10 @@ fn launch_fzf(crates: &[CratePackage], limit: usize, query: Option<&String>) -> 
     // Find crate and display full details
     if let Some(k) = crates.iter().find(|c| c.name == name) {
         display_single_crate(k);
-        return Ok(true);
+        Ok(true)
     } else {
         println!("{}", "Selection not found in list".yellow());
-        return Ok(false);
+        Ok(false)
     }
 }
 
@@ -364,7 +364,7 @@ fn truncate(s: &str, max: usize) -> String {
         s.to_string()
     } else {
         let mut t = s[..max].to_string();
-        t.push_str("…");
+        t.push("…");
         t
     }
 }
