@@ -18,28 +18,21 @@ jobs:
             target: x86_64-apple-darwin
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-macos-x86_64
-            use_cross: false
           
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-macos-aarch64
-            use_cross: false
           
           # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-linux-x86_64
-            use_cross: false
           
-          # Linux ARM64 (optional, for Raspberry Pi, AWS Graviton, etc.)
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            artifact_name: ratcrate-cli
-            asset_name: ratcrate-cli-linux-aarch64
-            use_cross: true
+          # Skip ARM64 Linux - users can install via cargo
+          # ARM users: cargo install ratcrate-cli
     
     runs-on: ${{ matrix.os }}
     
@@ -51,19 +44,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      # Install cross for ARM cross-compilation
-      - name: Install cross
-        if: matrix.use_cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
       
       - name: Build release binary
-        run: |
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+        run: cargo build --release --target ${{ matrix.target }}
       
       - name: Strip binary (reduce size)
         if: matrix.os != 'windows-latest'
@@ -97,10 +80,15 @@ jobs:
             ## SHA256 Checksums
             
             ${{ matrix.asset_name }}.tar.gz: `${{ steps.sha256.outputs.hash }}`
+            
+            ---
+            
+            **Note for ARM64 Linux users:** Pre-built ARM64 binaries are not provided. 
+            Please install via cargo: `cargo install ratcrate-cli`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Optional: Create Debian package
+  # Create Debian package (x86_64 only)
   create-deb:
     name: Create Debian Package
     runs-on: ubuntu-latest
