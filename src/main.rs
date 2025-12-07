@@ -364,7 +364,7 @@ fn truncate(s: &str, max: usize) -> String {
         s.to_string()
     } else {
         let mut t = s[..max].to_string();
-        t.push("…");
+        t.push('…');
         t
     }
 }
