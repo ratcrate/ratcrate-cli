@@ -70,12 +70,12 @@ jobs:
       #     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
       - name: Build release binary
-       run: |
-       if [ "${{ matrix.use_cross }}" = "true" ]; then
-         cross build --release --target ${{ matrix.target }}
-       else
-         cargo build --release --target ${{ matrix.target }}
-       fi
+        run: |
+         if [ "${{ matrix.use_cross }}" = "true" ]; then
+           cross build --release --target ${{ matrix.target }}
+         else
+           cargo build --release --target ${{ matrix.target }}
+         fi
       
       - name: Strip binary (reduce size)
         if: matrix.os != 'windows-latest'
