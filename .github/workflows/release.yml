@@ -18,18 +18,21 @@ jobs:
             target: x86_64-apple-darwin
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-macos-x86_64
+            use_cross: false
           
           # macOS Apple Silicon (ARM64)
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-macos-aarch64
+            use_cross: false
           
           # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: ratcrate-cli
             asset_name: ratcrate-cli-linux-x86_64
+            use_cross: false
           
           # Linux ARM64 (optional, for Raspberry Pi, AWS Graviton, etc.)
           - os: ubuntu-latest
@@ -54,28 +57,13 @@ jobs:
         if: matrix.use_cross
         run: cargo install cross --git https://github.com/cross-rs/cross
       
-      # Special setup for cross-compilation to ARM on Linux
-      # - name: Install cross-compilation tools
-      #   if: matrix.target == 'aarch64-unknown-linux-gnu'
-      #   run: |
-      #     sudo apt-get update
-      #     sudo dpkg --add-architecture aarch64
-      #     sudo apt-get update
-      #     sudo apt-get install -y gcc-aarch64-linux-gnu libssl-dev:aarch64
-      
-      # - name: Build release binary
-      #   run: cargo build --release --target ${{ matrix.target }}
-      #   env:
-      #     # For ARM Linux cross-compilation
-      #     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-
       - name: Build release binary
         run: |
-         if [ "${{ matrix.use_cross }}" = "true" ]; then
-           cross build --release --target ${{ matrix.target }}
-         else
-           cargo build --release --target ${{ matrix.target }}
-         fi
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
       
       - name: Strip binary (reduce size)
         if: matrix.os != 'windows-latest'
