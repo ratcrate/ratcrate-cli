@@ -1,30 +1,24 @@
 # 🦀 ratcrate-cli: Ratatui Ecosystem Crate Discoverer
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/ratcrate/ratcrate-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ratcrate/ratcrate-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/ratcrate/ratcrate-cli/actions/workflows/release.yml/badge.svg)](https://github.com/ratcrate/ratcrate-cli/actions/workflows/release.yml)
+[![Documentation](https://docs.rs/doc2quarto/badge.svg)](https://docs.rs/doc2quarto)[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) 
 [![Crates.io](https://img.shields.io/crates/v/ratcrate-cli.svg)](https://crates.io/crates/ratcrate-cli)
 [![Downloads](https://img.shields.io/crates/d/ratcrate-cli.svg)](https://crates.io/crates/ratcrate-cli)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
-[![CI](https://github.com/ratcrate/ratcrate-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ratcrate/ratcrate-cli/actions/workflows/ci.yml)
-[![Documentation](https://docs.rs/doc2quarto/badge.svg)](https://docs.rs/doc2quarto)[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) 
+
+
 
 # 🛠️ Overview
 
 **`ratcrate-cli`** is a fast, terminal-native command-line tool built in **Rust** for discovering, searching, and getting information about crates within the Ratatui ecosystem. It uses a smart caching strategy to provide near-instant results directly in your terminal. The project follows a standard Rust CLI structure, ensuring clear separation of responsibilities:
 
-*  **main.rs**:
-- Application Logic and CLIHandles argument parsing using clap.
-- Manages the top-level execution flow, prioritizing immediate exit commands (-t, -c).
-- Implements the core filtering and display logic.
-- Manages interaction with the external fzf command.
-   
-* **cache.rs**:
-- Data PersistenceManages the data source, which is a JSON file hosted remotely.
-- Calculates the cache age (set to 1 day maximum).
-- Handles fetching data via reqwest and saving/loading data from the OS-specific cache directory using dirs.
 
-* **types.rs**:
-- Data ModelingDefines the data contract for the remote JSON.
-- Uses serde to deserialize the data into structured CratePackage and CratesData structs.
+![ratcrate-cli-demo-small](https://github.com/user-attachments/assets/70f71f30-7076-4c93-aae9-17787475a550)
+
+
+
+
 
 > [!TIP] 
 > ### For more information, read ["The book"](https://qubitai.in/book/rat-cli/)
@@ -56,8 +50,7 @@ $> cargo install ratcrate-cli
 ## Using Homebrew
 
 ```bash
-$> brew tap rvbug/tap
-$> brew install rvbug/tap/doc2quarto
+$> brew install rvbug/tap/ratcrate-cli
 ```
 > Homebrew cn be installed via `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
 
@@ -66,11 +59,10 @@ $> brew install rvbug/tap/doc2quarto
 Clone the repository and build the project using Cargo:
 
 ```bash
-$> git clone [https://github.com/your-username/ratcrate-cli.git](https://github.com/your-username/ratcrate-cli.git)
+$> git clone [https://github.com/ratcrate/ratcrate-cli.git](https://github.com/ratcrate/ratcrate-cli.git)
 $> cd ratcrate-cli
 $> cargo install --path 
 ```
-
 
 
 ---
@@ -150,7 +142,7 @@ Query: parser
 
 ## Roadmap
 - [ ] "Try" mode
-- [ ] Debian and Arch Support
+- [ ] Debian & Arch Support
 
 ## 🤝 Contributing
 Contributions are welcome! If you have suggestions or find a bug, please open an issue or submit a pull request.
