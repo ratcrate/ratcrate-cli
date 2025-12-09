@@ -1,0 +1,53 @@
+name: Test Release Build
+on:
+  workflow_dispatch:  # Allows manual triggering from GitHub Actions tab
+    inputs:
+      target:
+        description: 'Target to build'
+        required: true
+        default: 'aarch64-unknown-linux-gnu'
+        type: choice
+        options:
+          - aarch64-unknown-linux-gnu
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+
+jobs:
+  test-build:
+    name: Test Build
+    runs-on: ${{ github.event.inputs.target == 'aarch64-unknown-linux-gnu' && 'ubuntu-latest' || (contains(github.event.inputs.target, 'apple') && 'macos-latest' || 'ubuntu-latest') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ github.event.inputs.target }}
+      
+      - name: Install cross-compilation tool
+        if: github.event.inputs.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+      
+      - name: Build release binary
+        run: |
+          if [ "${{ github.event.inputs.target }}" = "aarch64-unknown-linux-gnu" ]; then
+            cross build --release --target ${{ github.event.inputs.target }}
+          else
+            cargo build --release --target ${{ github.event.inputs.target }}
+          fi
+      
+      - name: List built artifacts
+        run: |
+          echo "Build successful! Binary location:"
+          ls -lh target/${{ github.event.inputs.target }}/release/
+      
+      - name: Upload artifact for inspection
+        uses: actions/upload-artifact@v3
+        with:
+          name: ratcrate-cli-${{ github.event.inputs.target }}
+          path: target/${{ github.event.inputs.target }}/release/ratcrate-cli
+          retention-days: 5
