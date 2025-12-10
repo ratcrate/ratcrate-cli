@@ -1,7 +1,7 @@
 # 🦀 ratcrate-cli: Ratatui Ecosystem Crate Discoverer
 
 [![CI](https://github.com/ratcrate/ratcrate-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ratcrate/ratcrate-cli/actions/workflows/ci.yml)
-[![Release](https://github.com/ratcrate/ratcrate-cli/actions/workflows/release.yml/badge.svg)](https://github.com/ratcrate/ratcrate-cli/actions/workflows/release.yml)
+[![Release](https://github.com/ratcrate/ratcrate-cli/actions/workflows/all-release.yml/badge.svg)](https://github.com/ratcrate/ratcrate-cli/actions/workflows/all-release.yml)
 [![Documentation](https://docs.rs/doc2quarto/badge.svg)](https://docs.rs/doc2quarto)[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) 
 [![Crates.io](https://img.shields.io/crates/v/ratcrate-cli.svg)](https://crates.io/crates/ratcrate-cli)
 [![Downloads](https://img.shields.io/crates/d/ratcrate-cli.svg)](https://crates.io/crates/ratcrate-cli)
