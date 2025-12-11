@@ -141,8 +141,9 @@ Query: parser
 ```
 
 ## Roadmap
+
 - [ ] "Try" mode
-- [ ] Debian & Arch Support
+- [ ] Debian Support
 
 ## 🤝 Contributing
 Contributions are welcome! If you have suggestions or find a bug, please open an issue or submit a pull request.
