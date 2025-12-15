@@ -141,8 +141,9 @@ Query: parser
 ```
 
 ## Roadmap
+
 - [ ] "Try" mode
-- [ ] Debian & Arch Support
+- [ ] Debian Support
 
 ## 🤝 Contributing
 Contributions are welcome! If you have suggestions or find a bug, please open an issue or submit a pull request.
@@ -150,8 +151,20 @@ Contributions are welcome! If you have suggestions or find a bug, please open an
 ## 📝 License
 This project is licensed under the MIT License. See the LICENSE file for details.
 
+---
 
+<br>
 
+<h1 align="center">Support</h1>
+
+<h3 align="center">
+  If you find my projects helpful or want to support my research and open-source work:
+</h3>
+<p align="center">
+  <a href="https://ko-fi.com/rvbugged">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Ko-fi" height="40">
+  </a>
+</p>
 
 
 
